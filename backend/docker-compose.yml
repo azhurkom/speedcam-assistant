@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://speedcam:SpeedCam2024!@n8n-db-1:5432/speed_cameras
+    networks:
+      - n8n_default
+networks:
+  n8n_default:
+    external: true

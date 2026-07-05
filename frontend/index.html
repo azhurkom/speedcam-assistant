@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="SpeedCam">
+
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon-192.png" type="image/png">
+
+  <meta name="description" content="Попередження про камери швидкості та контроль перевищення">
+  <meta name="apple-mobile-web-app-title" content="SpeedCam">
+
+  <title>SpeedCam Assistant</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ===== TOP BAR ===== -->
+    <div class="top-bar">
+      <div class="gps-indicator">
+        <span class="gps-dot" id="gpsDot"></span>
+        <span id="gpsText">GPS</span>
+      </div>
+      <div class="limit-block">
+        <button class="limit-btn" id="limitMinus" aria-label="Зменшити ліміт">−</button>
+        <span class="limit-value" id="limitValue">80</span>
+        <span class="limit-unit">км/год</span>
+        <button class="limit-btn" id="limitPlus" aria-label="Збільшити ліміт">+</button>
+      </div>
+    </div>
+
+    <!-- ===== SPEED ===== -->
+    <div class="speed-section">
+      <div class="speed-value" id="speedValue">—</div>
+      <div class="speed-unit" id="speedUnit">км/год</div>
+    </div>
+
+    <!-- ===== TIMER ===== -->
+    <div class="timer-section">
+      <div class="timer-bar-track" id="timerTrack">
+        <div class="timer-bar-fill" id="timerFill"></div>
+      </div>
+      <div class="timer-label" id="timerLabel">0 / 30 с</div>
+    </div>
+
+    <!-- ===== SIREN ===== -->
+    <div class="siren-alert" id="sirenAlert">⚠ СИРЕНА ⚠</div>
+
+    <!-- ===== CAMERA WARNING ===== -->
+    <div class="camera-warning" id="cameraWarning">
+      <span id="cameraWarningText">Камера попереду</span>
+      <span class="distance" id="cameraDistance"></span>
+    </div>
+
+    <!-- ===== START/STOP ===== -->
+    <div class="start-stop-section">
+      <button class="btn-startstop stopped" id="btnStartStop">СТАРТ</button>
+    </div>
+
+    <!-- ===== CAMERA ACTIONS ===== -->
+    <div class="camera-actions">
+      <button class="btn-camera add" id="btnAddCamera">+ Додати камеру</button>
+      <button class="btn-camera remove" id="btnRemoveCamera">− Видалити камеру</button>
+    </div>
+
+    <!-- ===== STATUS ===== -->
+    <div class="status-text" id="statusText">Натисніть СТАРТ</div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
