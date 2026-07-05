@@ -47,7 +47,7 @@
   // Speed limit range
   const LIMIT_MIN = 50;
   const LIMIT_MAX = 130;
-  const LIMIT_STEP = 10;
+  const LIMIT_STEP = 1;
 
   // Timer duration
   const EXCEED_TIMEOUT = 30; // seconds
@@ -375,19 +375,9 @@
       return;
     }
 
-    const limit = prompt('Введіть ліміт швидкості для камери (км/год):', '80');
-    if (limit === null || limit.trim() === '') return;
-
-    const limitNum = parseInt(limit, 10);
-    if (isNaN(limitNum) || limitNum < 20 || limitNum > 200) {
-      setStatus('Некоректний ліміт (20-200)', 'error');
-      return;
-    }
-
     const payload = {
       lat: prevCoords.lat,
-      lng: prevCoords.lng,
-      speed_limit: limitNum
+      lng: prevCoords.lng
     };
 
     try {
@@ -400,7 +390,7 @@
       const newCam = await res.json();
       cameras.push(newCam);
       saveCamerasToCache();
-      setStatus('Камеру додано!', 'active');
+      setStatus('✅ Камеру додано!', 'active');
     } catch (err) {
       setStatus('Помилка додавання камери: ' + err.message, 'error');
     }
