@@ -1,0 +1,111 @@
+package com.speedlimit.assistant
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+class MainActivity : AppCompatActivity() {
+
+    private var currentLimit = 90
+    private val minLimit = 88
+    private val maxLimit = 92
+    private var isRunning = false
+
+    private lateinit var limitValueText: TextView
+    private lateinit var statusText: TextView
+    private lateinit var btnStart: Button
+    private val limitButtons = mutableListOf<Button>()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        limitValueText = findViewById(R.id.limitValue)
+        statusText = findViewById(R.id.statusText)
+        btnStart = findViewById(R.id.btnStart)
+
+        // Limit buttons
+        for (i in 0..4) {
+            val btnId = resources.getIdentifier("btn_${88 + i}", "id", packageName)
+            val btn = findViewById<Button>(btnId)
+            limitButtons.add(btn)
+            btn.setOnClickListener {
+                currentLimit = 88 + i
+                updateUI()
+            }
+        }
+
+        btnStart.setOnClickListener {
+            if (isRunning) stopService()
+            else startService()
+        }
+
+        checkPermissions()
+        updateUI()
+
+        // Auto-start
+        if (hasPermissions()) startService()
+    }
+
+    private fun updateUI() {
+        limitValueText.text = "$currentLimit км/год"
+        limitButtons.forEach { btn ->
+            val value = btn.text.toString().toIntOrNull() ?: return@forEach
+            btn.isSelected = value == currentLimit
+        }
+    }
+
+    private fun startService() {
+        if (!hasPermissions()) {
+            requestPermissions()
+            return
+        }
+        GpsService.start(this, currentLimit)
+        isRunning = true
+        btnStart.text = "ЗУПИНИТИ"
+        btnStart.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+        statusText.text = "Активно · $currentLimit км/год"
+        statusText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+    }
+
+    private fun stopService() {
+        GpsService.stop(this)
+        isRunning = false
+        btnStart.text = "ЗАПУСТИТИ"
+        btnStart.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+        statusText.text = "Зупинено"
+        statusText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
+    }
+
+    private fun checkPermissions() {
+        if (!hasPermissions()) requestPermissions()
+    }
+
+    private fun hasPermissions(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        val notif = if (Build.VERSION.SDK_INT >= 33)
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+        else PackageManager.PERMISSION_GRANTED
+        return fine == PackageManager.PERMISSION_GRANTED && notif == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPermissions() {
+        val perms = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= 33) perms.add(Manifest.permission.POST_NOTIFICATIONS)
+        if (Build.VERSION.SDK_INT >= 29) perms.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        ActivityCompat.requestPermissions(this, perms.toTypedArray(), 100)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            startService()
+        }
+    }
+}

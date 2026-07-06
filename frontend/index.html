@@ -2,71 +2,30 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="SpeedCam">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/icon-192.png" type="image/png">
-  <meta name="description" content="Контроль перевищення швидкості">
-  <meta name="apple-mobile-web-app-title" content="SpeedCam">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css">
-  <title>SpeedCam - контроль швидкості</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speed Limit</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px; text-align: center;
+    }
+    h1 { font-size: 2rem; color: #ffc107; margin-bottom: 8px; }
+    p { color: #888; margin-bottom: 24px; line-height: 1.6; }
+    .btn {
+      display: inline-block; padding: 16px 48px; background: #2e7d32; color: #fff;
+      border-radius: 30px; text-decoration: none; font-size: 1.2rem; font-weight: bold;
+      box-shadow: 0 4px 20px rgba(46,125,50,0.4); transition: transform 0.2s;
+    }
+    .btn:active { transform: scale(0.95); }
+    .note { margin-top: 16px; color: #555; font-size: 0.8rem; max-width: 320px; }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-
-    <!-- TOP BAR -->
-    <div class="top-bar">
-      <div class="gps-block">
-        <span id="gpsDot" class="gps-dot"></span>
-        <span id="gpsText" class="gps-text">GPS</span>
-      </div>
-      <div class="status-block">
-        <span id="statusText" class="status-text">Готовий</span>
-      </div>
-    </div>
-
-    <!-- SPEED DISPLAY -->
-    <div class="speed-section">
-      <div class="speed-display">
-        <span id="speedValue" class="speed-value">--</span>
-        <span class="speed-unit">км/год</span>
-      </div>
-    </div>
-
-    <!-- SPEED LIMIT CONTROLS -->
-    <div class="limit-section">
-      <button id="limitMinus" class="limit-btn">−</button>
-      <div class="limit-display">
-        <span class="limit-label">Ліміт</span>
-        <span id="limitValue" class="limit-value">80</span>
-        <span class="limit-unit">км/год</span>
-      </div>
-      <button id="limitPlus" class="limit-btn">+</button>
-    </div>
-
-    <!-- EXCEED TIMER -->
-    <div id="timerSection" class="timer-section">
-      <div id="timerTrack" class="timer-track">
-        <div id="timerFill" class="timer-fill"></div>
-      </div>
-      <div id="timerLabel" class="timer-label">0 / 30 с</div>
-      <div id="sirenAlert" class="siren-alert">
-        <span>⚠ ПЕРЕВИЩЕННЯ ШВИДКОСТІ!</span>
-      </div>
-    </div>
-
-    <!-- START / STOP -->
-    <div class="controls-section">
-      <button id="btnStartStop" class="btn-startstop">СТАРТ</button>
-    </div>
-
-  </div>
-
-  <script src="app.js"></script>
+  <h1>Speed Limit</h1>
+  <p>Контроль перевищення швидкості.<br>Сигнал після 45 секунд понад ліміт.</p>
+  <a class="btn" href="https://github.com/azhurkom/speedcam-assistant/releases">Завантажити APK</a>
+  <p class="note">Потрібен Android 8+ з GPS. Працює у фоні 10+ годин.</p>
 </body>
 </html>
