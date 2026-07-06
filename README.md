@@ -1,56 +1,47 @@
-# SpeedCam Assistant 🚗📸
+# SpeedCam Assistant 🚗
 
-PWA + Android WebView додаток для попередження про камери контролю швидкості та контролю перевищення швидкості.
+PWA + Android WebView додаток для контролю перевищення швидкості.
 
 ## Можливості
 
-- **Антирадар** — голосове/звукове попередження за 1000 м до камери
-- **Speed Limiter** — сигнал при перевищенні ліміту понад 30 секунд (безперервно, доки не скинеш швидкість)
-- **Додати камеру** — натиснув +, камера збережена з поточних GPS координат
-- **Видалити камеру** — натиснув -, вибрав камеру поруч, видалив
-- **Карта камер** — 1900+ камер України з OpenStreetMap
+- **Speed Limiter** — задаєш граничну швидкість
+- **30 секунд** — якщо перевищення довше 30 с — вмикається сирена
+- **Сирена** — грає безперервно, доки не скинеш швидкість
+- **Фільтр Калмана** — стабільне відображення швидкості без шуму GPS
 - **Працює у фоні** — Android Foreground Service тримає GPS активним
 
-## Архітектура
+## Встановлення
 
-```
-/                          # PWA фронтенд (HTML/CSS/JS)
-backend/                   # FastAPI + PostgreSQL
-android/                   # Android WebView wrapper (Kotlin)
-scripts/                   # Імпорт з OpenStreetMap
-```
+### Веб-версія
+Відкрий **https://speed.komhub.top** у Chrome на телефоні
 
-## Швидкий старт
+### Android APK
+1. Завантаж APK з [Releases](https://github.com/azhurkom/speedcam-assistant/releases)
+2. Встанови та надай дозвіл на геолокацію
+3. Натисни СТАРТ
 
-### Відкрити сайт
-**https://speed.komhub.top** — поки працює без SSL, далі буде HTTPS
+## Як це працює
 
-### Встановити на Android
-1. Завантажте APK з [Releases](https://github.com/azhurkom/speedcam-assistant/releases)
-2. Встановіть та надайте дозвіл на геолокацію
-3. Натисніть СТАРТ
+1. Запускаєш додаток (СТАРТ)
+2. Встановлюєш граничну швидкість (+/−)
+3. Їдеш — на екрані поточна швидкість
+4. Якщо перевищення триває >30 с — сирена
+5. Скинув газ — сирена вимикається, таймер скидається
 
 ## Технології
 
-- **Frontend:** Vanilla JS, CSS3, PWA (Service Worker, manifest)
-- **Backend:** Python FastAPI, PostgreSQL (pgvector/pg16)
-- **Android:** Kotlin, WebView, Foreground Service
-- **Data:** OpenStreetMap Overpass API
+- **Frontend:** Vanilla JS, CSS3, PWA (Service Worker)
+- **Android:** Kotlin, WebView, Foreground Service, FusedLocationProviderClient
 - **Deploy:** Docker, Nginx Proxy Manager
 
-## Локальна розробка
+## Розробка
 
 ```bash
 git clone https://github.com/azhurkom/speedcam-assistant.git
 cd speedcam-assistant
 
-# Frontend — просто відкрий index.html у браузері
+# Frontend
 open frontend/index.html
-
-# Backend
-cd backend
-pip install -r requirements.txt
-DATABASE_URL=postgresql://user:pass@localhost:5432/speed_cameras uvicorn main:app --reload
 
 # Android — відкрий android/ в Android Studio
 ```
