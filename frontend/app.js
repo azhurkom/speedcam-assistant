@@ -367,25 +367,42 @@
     }
 
     if (nearest && nearestDist <= CAMERA_WARN_RADIUS) {
-      // Show warning
-      const limitText = nearest.speed_limit ? ' (' + nearest.speed_limit + ' км/год)' : '';
-      cameraWarningText.textContent = '📷 Камера попереду' + limitText;
-      const distM = Math.round(nearestDist);
-      const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + ' км' : distM + ' м';
-      cameraDistance.textContent = '— ' + distText;
-      cameraWarning.classList.add('visible');
+      // Determine direction: are we moving towards or away?
+      let isApproaching = true;
+      if (lastNearCamera && lastNearCamera.id === nearest.id && lastNearCamera.dist !== undefined) {
+        // Same camera — compare distances
+        isApproaching = nearestDist < lastNearCamera.dist;
+      }
 
-      // Beep every 5 seconds if still within range
-      const now = Date.now();
-      if (now - lastCameraBeep > 5000) {
-        playCameraBeep();
-        lastCameraBeep = now;
+      // Store current distance for next comparison
+      nearest.dist = nearestDist;
+
+      if (isApproaching) {
+        // Moving towards camera — show warning
+        const limitText = nearest.speed_limit ? ' (' + nearest.speed_limit + ' км/год)' : '';
+        cameraWarningText.textContent = '📷 Камера попереду' + limitText;
+        const distM = Math.round(nearestDist);
+        const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + ' км' : distM + ' м';
+        cameraDistance.textContent = '— ' + distText;
+        cameraWarning.classList.add('visible');
+
+        // Beep every 5 seconds if still within range
+        const now = Date.now();
+        if (now - lastCameraBeep > 5000) {
+          playCameraBeep();
+          lastCameraBeep = now;
+        }
+      } else {
+        // Moving away from camera — hide warning and silence
+        cameraWarning.classList.remove('visible');
+        lastCameraBeep = 0; // reset beep timer for next camera
       }
 
       lastNearCamera = nearest;
     } else {
       cameraWarning.classList.remove('visible');
       lastNearCamera = null;
+      lastCameraBeep = 0;
     }
   }
 
