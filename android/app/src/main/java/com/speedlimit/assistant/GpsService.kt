@@ -18,6 +18,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +27,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 class GpsService : Service() {
 
@@ -38,22 +38,19 @@ class GpsService : Service() {
         }
     }
 
-    // Speed state
     private var speedLimit = 90
     private var currentSpeed = 0f
-    private var exceedSeconds = 0f
     private var isSirenPlaying = false
     private var sirenTrack: AudioTrack? = null
 
     // Kalman filter (responsive)
     private var kalmanX = 0f
     private var kalmanP = 0.5f
-    private val KALMAN_Q = 0.5f   // responsive to acceleration
-    private val KALMAN_R = 2.0f   // trust GPS more
+    private val KALMAN_Q = 0.5f
+    private val KALMAN_R = 2.0f
     private val DRIFT_THRESHOLD = 2.5f
 
-    // Exceed timer
-    private val EXCEED_THRESHOLD = 45  // seconds
+    // Exceed timer (45 seconds)
     private var exceedCount = 0
 
     companion object {
@@ -82,7 +79,7 @@ class GpsService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        fusedLocationClient = FusedLocationProviderClient(this)
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
     }
 
@@ -92,10 +89,9 @@ class GpsService : Service() {
                 speedLimit = intent.getIntExtra(EXTRA_LIMIT, 90)
                 startForeground(NOTIFICATION_ID, buildNotification())
                 startLocationUpdates()
-                // Start exceed monitor
                 scope.launch {
                     while (isActive) {
-                        delay(1000) // every second
+                        delay(1000)
                         tickExceed()
                         updateNotification(isSirenPlaying)
                     }
@@ -127,14 +123,14 @@ class GpsService : Service() {
     }
 
     private fun stopLocationUpdates() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        try {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        } catch (_: Exception) {}
     }
 
-    // Kalman filter speed update
     private fun updateSpeed(location: Location) {
-        val gpsSpeed = location.speed * 3.6f  // m/s → km/h
+        val gpsSpeed = location.speed * 3.6f
 
-        // Kalman update
         kalmanP += KALMAN_Q
         val k = kalmanP / (kalmanP + KALMAN_R)
         kalmanX += k * (gpsSpeed - kalmanX)
@@ -143,11 +139,10 @@ class GpsService : Service() {
         currentSpeed = if (kalmanX < DRIFT_THRESHOLD) 0f else kalmanX
     }
 
-    // Exceed timer tick
     private fun tickExceed() {
         if (currentSpeed > speedLimit) {
             exceedCount++
-            if (exceedCount >= EXCEED_THRESHOLD && !isSirenPlaying) {
+            if (exceedCount >= 45 && !isSirenPlaying) {
                 startSiren()
             }
         } else {
@@ -156,13 +151,12 @@ class GpsService : Service() {
         }
     }
 
-    // Siren via AudioTrack (programmatic sine wave sweep)
     private fun startSiren() {
         if (isSirenPlaying) return
         isSirenPlaying = true
 
         val sampleRate = 22050
-        val bufferSize = sampleRate / 2  // 0.5 second buffer
+        val bufferSize = sampleRate / 2
 
         sirenTrack = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
@@ -175,7 +169,7 @@ class GpsService : Service() {
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build())
             .setBufferSizeInBytes(bufferSize * 2)
-            .setTransferMode(AudioTrack.MODE_CIRCULAR)
+            .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
 
         scope.launch {
@@ -185,10 +179,9 @@ class GpsService : Service() {
                 var phase = 0.0
 
                 while (isActive && isSirenPlaying) {
-                    // Sweep 500→1000→500 Hz over buffer
                     for (i in samples.indices) {
                         val t = i.toDouble() / sampleRate
-                        val freq = 500.0 + 500.0 * Math.sin(2.0 * Math.PI * t / 0.5)  // sweep period 0.5s
+                        val freq = 500.0 + 500.0 * Math.sin(2.0 * Math.PI * t / 0.5)
                         val value = Math.sin(2.0 * Math.PI * freq * t + phase) * 0.4
                         samples[i] = (value * Short.MAX_VALUE).toInt().toShort()
                     }
@@ -208,14 +201,13 @@ class GpsService : Service() {
         sirenTrack = null
     }
 
-    // Notification
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID, "Speed Limit", NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Speed limit monitor is active"
-                setSound(null, null)  // silent channel (siren is separate)
+                setSound(null, null)
             }
             val nm = getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)
