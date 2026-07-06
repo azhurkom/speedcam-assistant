@@ -59,6 +59,27 @@
   // GPS smoothing: minimum speed change (km/h) to update display
   const SPEED_UPDATE_THRESHOLD = 0.5;
 
+  // ─── Kalman filter (1D) for speed ───────────────────────────────────────
+  let kalmanX = 0;        // estimated speed (km/h)
+  let kalmanP = 0.5;      // estimation error covariance
+  const KALMAN_Q = 0.1;   // process noise — how fast can speed change
+  const KALMAN_R = 3.0;   // measurement noise — GPS accuracy
+  const DRIFT_THRESHOLD = 2.5;  // km/h — below this show 0
+
+  function kalmanUpdate(z) {
+    // Prediction step
+    kalmanP = kalmanP + KALMAN_Q;
+    // Update step
+    const k = kalmanP / (kalmanP + KALMAN_R);
+    kalmanX = kalmanX + k * (z - kalmanX);
+    kalmanP = (1 - k) * kalmanP;
+    // Apply drift threshold
+    if (kalmanX < DRIFT_THRESHOLD) {
+      kalmanX = 0;
+    }
+    return kalmanX;
+  }
+
   // ─── Haversine ─────────────────────────────────────────────────────────
   function haversine(lat1, lng1, lat2, lng2) {
     const R = 6371000; // Earth radius in meters
@@ -178,9 +199,9 @@
         const speedMs = dist / dt;
         const speedKmh = speedMs * 3.6;
 
-        // Apply a simple sanity check: GPS speeds > 300 km/h are noise
+        // Kalman filter + drift threshold
         if (speedKmh >= 0 && speedKmh <= 300) {
-          currentSpeed = speedKmh;
+          currentSpeed = kalmanUpdate(speedKmh);
           updateSpeedDisplay();
           checkExceed();
         }
