@@ -13,78 +13,53 @@ import androidx.core.content.ContextCompat
 class MainActivity : AppCompatActivity() {
 
     private var currentLimit = 90
-    private val minLimit = 88
-    private val maxLimit = 92
-    private var isRunning = false
-
-    private lateinit var limitValueText: TextView
-    private lateinit var statusText: TextView
-    private lateinit var btnStart: Button
     private val limitButtons = mutableListOf<Button>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        limitValueText = findViewById(R.id.limitValue)
-        statusText = findViewById(R.id.statusText)
-        btnStart = findViewById(R.id.btnStart)
+        val limitValueText = findViewById<TextView>(R.id.limitValue)
 
-        // Limit buttons
+        // Limit buttons 88-92
         for (i in 0..4) {
             val btnId = resources.getIdentifier("btn_${88 + i}", "id", packageName)
             val btn = findViewById<Button>(btnId)
             limitButtons.add(btn)
             btn.setOnClickListener {
                 currentLimit = 88 + i
-                updateUI()
+                limitValueText.text = "$currentLimit км/год"
+                // Restart service with new limit
+                if (hasPermissions()) {
+                    GpsService.stop(this)
+                    GpsService.start(this, currentLimit)
+                }
+                updateButtons()
             }
         }
 
-        btnStart.setOnClickListener {
-            if (isRunning) stopService()
-            else startService()
-        }
-
-        checkPermissions()
-        updateUI()
-
-        // Auto-start
-        if (hasPermissions()) startService()
+        updateButtons()
+        checkPermissionsAndStart()
     }
 
-    private fun updateUI() {
-        limitValueText.text = "$currentLimit км/год"
+    override fun onDestroy() {
+        GpsService.stop(this)
+        super.onDestroy()
+    }
+
+    private fun updateButtons() {
         limitButtons.forEach { btn ->
             val value = btn.text.toString().toIntOrNull() ?: return@forEach
             btn.isSelected = value == currentLimit
         }
     }
 
-    private fun startService() {
-        if (!hasPermissions()) {
+    private fun checkPermissionsAndStart() {
+        if (hasPermissions()) {
+            GpsService.start(this, currentLimit)
+        } else {
             requestPermissions()
-            return
         }
-        GpsService.start(this, currentLimit)
-        isRunning = true
-        btnStart.text = "ЗУПИНИТИ"
-        btnStart.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-        statusText.text = "Активно · $currentLimit км/год"
-        statusText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
-    }
-
-    private fun stopService() {
-        GpsService.stop(this)
-        isRunning = false
-        btnStart.text = "ЗАПУСТИТИ"
-        btnStart.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-        statusText.text = "Зупинено"
-        statusText.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
-    }
-
-    private fun checkPermissions() {
-        if (!hasPermissions()) requestPermissions()
     }
 
     private fun hasPermissions(): Boolean {
@@ -105,7 +80,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 100 && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            startService()
+            GpsService.start(this, currentLimit)
         }
     }
 }
