@@ -8,12 +8,29 @@
     android:padding="24dp">
 
     <TextView
+        android:id="@+id/speedValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--"
+        android:textColor="#ffffff"
+        android:textSize="72sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="км/год"
+        android:textColor="#666666"
+        android:textSize="16sp"
+        android:layout_marginBottom="32dp" />
+
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Speed Limit"
         android:textColor="#ffc107"
-        android:textSize="28sp"
-        android:textStyle="bold"
+        android:textSize="18sp"
         android:layout_marginBottom="8dp" />
 
     <TextView
@@ -22,7 +39,7 @@
         android:layout_height="wrap_content"
         android:text="90 км/год"
         android:textColor="#ffffff"
-        android:textSize="48sp"
+        android:textSize="36sp"
         android:textStyle="bold"
         android:layout_marginBottom="32dp" />
 

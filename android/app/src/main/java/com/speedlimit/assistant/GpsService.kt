@@ -27,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.*
 
 class GpsService : Service() {
 
@@ -39,7 +40,13 @@ class GpsService : Service() {
     }
 
     private var speedLimit = 90
-    private var currentSpeed = 0f
+    @Volatile private var currentSpeed = 0f
+
+    private var prevLat = 0.0
+    private var prevLng = 0.0
+    private var prevTime = 0L
+    private var hasPrev = false
+
     private var isSirenPlaying = false
     private var sirenTrack: AudioTrack? = null
 
@@ -50,7 +57,7 @@ class GpsService : Service() {
     private val KALMAN_R = 2.0f
     private val DRIFT_THRESHOLD = 2.5f
 
-    // Exceed timer (45 seconds)
+    // Exceed timer
     private var exceedCount = 0
 
     companion object {
@@ -59,6 +66,9 @@ class GpsService : Service() {
         private const val ACTION_START = "START"
         private const val ACTION_STOP = "STOP"
         private const val EXTRA_LIMIT = "limit"
+
+        @Volatile var lastDisplaySpeed = 0f
+            private set
 
         fun start(context: Context, limit: Int) {
             val intent = Intent(context, GpsService::class.java).apply {
@@ -93,7 +103,7 @@ class GpsService : Service() {
                     while (isActive) {
                         delay(1000)
                         tickExceed()
-                        updateNotification(isSirenPlaying)
+                        updateNotification()
                     }
                 }
             }
@@ -116,27 +126,50 @@ class GpsService : Service() {
             .setMinUpdateIntervalMillis(500)
             .build()
         try {
-            fusedLocationClient.requestLocationUpdates(
-                request, locationCallback, Looper.getMainLooper()
-            )
+            fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
         } catch (_: SecurityException) {}
     }
 
     private fun stopLocationUpdates() {
-        try {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        } catch (_: Exception) {}
+        try { fusedLocationClient.removeLocationUpdates(locationCallback) } catch (_: Exception) {}
+    }
+
+    // Haversine distance
+    private fun haversine(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val R = 6371000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = sin(dLat / 2.0).pow(2) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLng / 2.0).pow(2)
+        return R * 2.0 * atan2(sqrt(a), sqrt(1.0 - a))
     }
 
     private fun updateSpeed(location: Location) {
-        val gpsSpeed = location.speed * 3.6f
+        val lat = location.latitude
+        val lng = location.longitude
+        val time = System.currentTimeMillis()
 
-        kalmanP += KALMAN_Q
-        val k = kalmanP / (kalmanP + KALMAN_R)
-        kalmanX += k * (gpsSpeed - kalmanX)
-        kalmanP *= (1f - k)
+        if (hasPrev) {
+            val dt = (time - prevTime) / 1000.0
+            if (dt in 0.5..10.0) {
+                val dist = haversine(prevLat, prevLng, lat, lng)
+                val speedMs = dist / dt
+                val gpsSpeed = (speedMs * 3.6).toFloat()
 
-        currentSpeed = if (kalmanX < DRIFT_THRESHOLD) 0f else kalmanX
+                // Kalman filter
+                kalmanP += KALMAN_Q
+                val k = kalmanP / (kalmanP + KALMAN_R)
+                kalmanX += k * (gpsSpeed - kalmanX)
+                kalmanP *= (1f - k)
+
+                currentSpeed = if (kalmanX < DRIFT_THRESHOLD) 0f else kalmanX
+                lastDisplaySpeed = currentSpeed
+            }
+        } else {
+            hasPrev = true
+        }
+        prevLat = lat
+        prevLng = lng
+        prevTime = time
     }
 
     private fun tickExceed() {
@@ -151,6 +184,7 @@ class GpsService : Service() {
         }
     }
 
+    // Siren via AudioTrack (sine wave sweep 500-1000Hz)
     private fun startSiren() {
         if (isSirenPlaying) return
         isSirenPlaying = true
@@ -177,15 +211,14 @@ class GpsService : Service() {
                 sirenTrack?.play()
                 val samples = ShortArray(bufferSize)
                 var phase = 0.0
-
                 while (isActive && isSirenPlaying) {
                     for (i in samples.indices) {
                         val t = i.toDouble() / sampleRate
-                        val freq = 500.0 + 500.0 * Math.sin(2.0 * Math.PI * t / 0.5)
-                        val value = Math.sin(2.0 * Math.PI * freq * t + phase) * 0.4
+                        val freq = 500.0 + 500.0 * sin(2.0 * PI * t / 0.5)
+                        val value = sin(2.0 * PI * freq * t + phase) * 0.4
                         samples[i] = (value * Short.MAX_VALUE).toInt().toShort()
                     }
-                    phase += 2.0 * Math.PI * 500.0 * (bufferSize.toDouble() / sampleRate)
+                    phase += 2.0 * PI * 500.0 * (bufferSize.toDouble() / sampleRate)
                     sirenTrack?.write(samples, 0, samples.size)
                 }
             } catch (_: Exception) {}
@@ -203,30 +236,28 @@ class GpsService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Speed Limit", NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Speed limit monitor is active"
+            val channel = NotificationChannel(CHANNEL_ID, "Speed Limit", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Speed limit monitor"
                 setSound(null, null)
             }
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Speed Limit")
-            .setContentText("$speedLimit км/год")
+            .setContentText("$speedLimit км/год · ${Math.round(currentSpeed)} км/год")
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
             .setOngoing(true)
             .setSilent(true)
             .build()
     }
 
-    private fun updateNotification(sirenPlaying: Boolean) {
+    private fun updateNotification() {
         val nm = getSystemService(NotificationManager::class.java)
-        val text = if (sirenPlaying) "⚠ ПЕРЕВИЩЕННЯ!" else "$speedLimit км/год"
+        val text = if (isSirenPlaying) "⚠ ПЕРЕВИЩЕННЯ! ${Math.round(currentSpeed)}/$speedLimit"
+                   else "$speedLimit км/год · ${Math.round(currentSpeed)} км/год"
         nm.notify(NOTIFICATION_ID,
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Speed Limit")
